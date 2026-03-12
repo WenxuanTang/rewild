@@ -30,7 +30,7 @@ export async function identifyWithPlantNet(
 
   const formData = new FormData()
   for (let i = 0; i < imageBuffers.length; i++) {
-    const blob = new Blob([imageBuffers[i]], { type: 'image/jpeg' })
+    const blob = new Blob([new Uint8Array(imageBuffers[i])], { type: 'image/jpeg' })
     formData.append('images', blob, `image${i}.jpg`)
     formData.append('organs', 'auto') // Let PlantNet decide the organ type
   }
