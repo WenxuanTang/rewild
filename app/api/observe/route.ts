@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { identifyWithPlantNet } from '@/lib/plantnet'
 import { generateNaturalistResponse } from '@/lib/openai-naturalist'
 
-export const maxDuration = 60 // seconds — allow time for PlantNet + LLM
+// 10s = Vercel Hobby (free). Upgrade to Pro for 60s if needed.
+export const maxDuration = 10
 
 export async function POST(request: NextRequest) {
   try {
