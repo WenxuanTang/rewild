@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, DragEvent } from 'react'
 import Link from 'next/link'
+import { compressImages } from '@/lib/image-compress'
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -47,13 +48,17 @@ export default function ObservePage() {
   /* ─── Image handling ─────────────────────────────────── */
 
   const addImages = useCallback(
-    (files: FileList | File[]) => {
+    async (files: FileList | File[]) => {
       const incoming = Array.from(files)
         .filter((f) => f.type.startsWith('image/'))
         .slice(0, 4 - images.length)
       if (incoming.length === 0) return
-      setImages((prev) => [...prev, ...incoming].slice(0, 4))
-      incoming.forEach((file) => {
+
+      // Compress to ~800 KB each before storing (avoids 413 on upload)
+      const compressed = await compressImages(incoming)
+
+      setImages((prev) => [...prev, ...compressed].slice(0, 4))
+      compressed.forEach((file) => {
         const reader = new FileReader()
         reader.onload = (e) =>
           setPreviews((prev) => [...prev, e.target?.result as string].slice(0, 4))
@@ -73,7 +78,7 @@ export default function ObservePage() {
   const onDragOver  = (e: DragEvent) => { e.preventDefault(); setIsDragging(true) }
   const onDragLeave = () => setIsDragging(false)
   const onDrop      = (e: DragEvent) => {
-    e.preventDefault(); setIsDragging(false); addImages(e.dataTransfer.files)
+    e.preventDefault(); setIsDragging(false); void addImages(e.dataTransfer.files)
   }
 
   /* ─── Submit ─────────────────────────────────────────── */
@@ -89,8 +94,13 @@ export default function ObservePage() {
     if (notes.trim())    formData.append('notes',    notes.trim())
 
     try {
-      const res  = await fetch('/api/observe', { method: 'POST', body: formData })
-      const data = await res.json()
+      const res         = await fetch('/api/observe', { method: 'POST', body: formData })
+      const contentType = res.headers.get('content-type') ?? ''
+      // Guard against non-JSON responses (e.g. 413 "Request Entity Too Large")
+      const data = contentType.includes('application/json')
+        ? await res.json()
+        : { error: `Server error ${res.status}: ${(await res.text()).slice(0, 120)}` }
+
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed')
       setResult(data)
       setPageState('results')
