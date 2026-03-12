@@ -39,6 +39,15 @@ export interface ObservationLogEntry {
   userInput: UserInputLog
   llmInput: LLMInputLog
   llmOutput: LLMOutputLog
+  blobUrls: string[]            // empty if BLOB_READ_WRITE_TOKEN not set
+}
+
+export interface FeedbackLogEntry {
+  requestId: string
+  timestamp: string
+  event: 'user_feedback'
+  rating: 'helpful' | 'not_helpful'
+  blobsDeleted: boolean         // true = images deleted (helpful), false = kept (not helpful)
 }
 
 export interface ErrorLogEntry {
@@ -51,12 +60,18 @@ export interface ErrorLogEntry {
 
 /* ── Helpers ────────────────────────────────────────────── */
 
-function emit(entry: ObservationLogEntry | ErrorLogEntry): void {
+type LogEntry = ObservationLogEntry | FeedbackLogEntry | ErrorLogEntry
+
+function emit(entry: LogEntry): void {
   // JSON-lines format: one line per event, easy to grep / ingest
   console.log(JSON.stringify(entry))
 }
 
 export function logObservation(entry: ObservationLogEntry): void {
+  emit(entry)
+}
+
+export function logFeedback(entry: FeedbackLogEntry): void {
   emit(entry)
 }
 
